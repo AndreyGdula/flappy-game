@@ -15,7 +15,7 @@ BIRD_IMG = [
 ]
 
 pygame.font.init()
-FONT_POINT = pygame.font.SysFont('Arial', 50)
+FONT_SCORE = pygame.font.SysFont('Arial', 50)
 
 class Bird:
     IMGS = BIRD_IMG
@@ -54,9 +54,8 @@ class Bird:
         if deslc < 0 or self.y < (self.height + 50):
             if self.angle < self.MAX_ROT:
                 self.angle = self.MAX_ROT
-        else:
-            if self.angle > -90:
-                self.angle -= self.SPEED_ROT
+        elif self.angle > -90:
+            self.angle -= self.SPEED_ROT
 
     def draw(self, screen):
         self.img_cont += 1
@@ -95,8 +94,8 @@ class Pipe:
         self.width = 0
         self.pos_top = 0
         self.pos_base = 0
-        self.PIPE_TOP = pygame.transform.flip(PIPE_IMG, False, True)
-        self.PIPE_BASE = PIPE_IMG
+        self.PIPE_TOP = PIPE_IMG
+        self.PIPE_BASE = pygame.transform.flip(PIPE_IMG, False, True)
         self.passed = False # passáro passou do cano
         self.define_width()
 
@@ -153,14 +152,14 @@ class Floor:
         screen.blit(self.IMAGE, (self.x1, self.y))
 
 
-def draw_screen(screen, bird, pipes, floor, point):
+def draw_screen(screen, bird, pipes, floor, score):
     screen.blit(BG_IMG, (0, 0))
     bird.draw(screen)
     floor.draw(screen)
     for pipe in pipes:
         pipe.draw(screen)
     
-    text_score = FONT_POINT.render(f"Score: {point}", 1, (255, 255, 255))
+    text_score = FONT_SCORE.render(f"Score: {score}", 1, (255, 255, 255))
     screen.blit(text_score, (SCREEN_WIDTH - 10 - text_score.get_width(), 10))
     
     pygame.display.update()
@@ -171,8 +170,12 @@ def main():
     floor = Floor(730)
     pipes = [Pipe(700)]
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    point = 0
+    score = 0
     clock = pygame.time.Clock()
+
+    pygame.mixer.init()
+    score_effect = pygame.mixer.Sound('sound/score_sound.wav')
+    hit_effect = pygame.mixer.Sound('sound/hit_sound.mp3')
 
     run = True
     while run:
@@ -185,6 +188,8 @@ def main():
                 quit()
 
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    run = False
                 if event.key == pygame.K_SPACE:
                     bird.jump()
 
@@ -195,7 +200,9 @@ def main():
         remove_pipe = []
         for pipe in pipes:
             if pipe.collision(bird): # jogador perde
-                run = False
+                score = 0
+                hit_effect.play()
+                # run = False 
 
             if not pipe.passed and bird.x > pipe.x:
                 pipe.passed = True
@@ -205,17 +212,20 @@ def main():
             if pipe.x + pipe.PIPE_TOP.get_width() < 0:
                 remove_pipe.append(pipe)
 
-        if add_pipe:
-            point += 1
+        if add_pipe: # adiciona um cano e conta um ponto para o jogador
+            score += 1
+            score_effect.play()
             pipes.append(Pipe(600))
-        
+         
         for pipe in remove_pipe:
             pipes.remove(pipe)
 
         if (bird.y + bird.image.get_height()) > floor.y or bird.y < 0: # jogador perde
-            run = False
+            score = 0
+            hit_effect.play()
+            # run = False
 
-        draw_screen(screen, bird, pipes, floor, point)
+        draw_screen(screen, bird, pipes, floor, score)
 
 
 if __name__ == '__main__':
